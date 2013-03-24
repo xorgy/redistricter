@@ -192,3 +192,18 @@ http://www.house.mo.gov/largemap.aspx
 
 TODO: set G+ on the website
 https://plusone.google.com/_/+1/confirm?hl=en&url=${url} 
+
+2012-06-28 15:09:01 EDT (Thursday, June 28 03:09:01 PM)
+
+TODO: use 'proj' open source to remap lat,lon to better x,y
+either "Lambert Azimuthal Equal Area Projection"
++proj=laea +lon_0=90w +lat_0=45
+
+or
+
+"Azimuthal Equidistant Projection"
++proj=aeqd +lon_0=90w +lat_0=45
+
+
+"THE PROMISE AND PERILS OF COMPUTERS IN REDISTRICTING"MICAH ALTMAN* MICHAEL MCDONALD
+http://scholarship.law.duke.edu/cgi/viewcontent.cgi?article=1026&context=djclpp

@@ -19,10 +19,15 @@ from newerthan import newerthan
 import setupstatedata
 import shapefile
 
+TIGER_ROOT_URL = 'http://www2.census.gov/geo/tiger/TIGER2010/'
 TABBLOCK_URL = 'http://www2.census.gov/geo/tiger/TIGER2010/TABBLOCK/2010/'
 FACES_URL = 'http://www2.census.gov/geo/tiger/TIGER2010/FACES/'
 EDGES_URL = 'http://www2.census.gov/geo/tiger/TIGER2010/EDGES/'
 COUNTY_URL = 'http://www2.census.gov/geo/tiger/TIGER2010/COUNTY/2010/'
+
+# e.g. http://www2.census.gov/census_2010/01-Redistricting_File--PL_94-171/Virginia/va2010.pl.zip
+# takes (state name, stl) like ('Virginia', 'va')
+PL_ZIP_TEMPLATE = 'http://www2.census.gov/census_2010/01-Redistricting_File--PL_94-171/%s/%s2010.pl.zip'
 
 # Three days
 INDEX_CACHE_SECONDS = 3*24*3600
@@ -123,10 +128,6 @@ COUNTY_RE = re.compile(r'tl_2010_(\d\d)_county10.zip', re.IGNORECASE)
 def getCountySet(datadir):
 	return getCensusTigerSetList(datadir, COUNTY_URL, 'county_index.html', COUNTY_RE)
 
-
-# e.g. http://www2.census.gov/census_2010/01-Redistricting_File--PL_94-171/Virginia/va2010.pl.zip
-# takes (state name, stl) like ('Virginia', 'va')
-PL_ZIP_TEMPLATE = 'http://www2.census.gov/census_2010/01-Redistricting_File--PL_94-171/%s/%s2010.pl.zip'
 
 class Crawler(object):
 	def __init__(self, options):
@@ -235,7 +236,7 @@ class ProcessGlobals(setupstatedata.ProcessGlobals):
 	def __init__(self, options, crawley):
 		super(ProcessGlobals, self).__init__(options)
 		self.crawley = crawley
-		self.tigerlatest = 'http://www2.census.gov/geo/tiger/TIGER2010/'
+		self.tigerlatest = TIGER_ROOT_URL
 	
 	def getState(self, name):
 		return StateData(self, name, self.options)
