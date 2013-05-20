@@ -1,0 +1,9 @@
+//
+// Prefix header for all source files of the 'guidistricter' target in the 'guidistricter' project
+//
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+#endif
+
+#define HAVE_PROTOBUF 1

@@ -1,0 +1,200 @@
+Problems with using a Genetic Algorithm for redistricting
+
+I initially formulated the genetic string to be an array, one entry per block, noting which district the block belonged to. Crossover mating on this type was simple. Mutation was easy and I allowed either swapping the district value of two positions or randomly assigning a district to some position.
+
+I used several different variations on measuring the fitness. They all had as components the "moment" of the districts and the inter district population variance.
+
+	The moment is the sum of ((block to district center distance)^2 * block population) across all blocks for the district each is in. A district center is the population weighted average of the positions of the blocks in a district.
+
+	The inter population variance is the sum of the squared differences between the population of each district and the average population of all the districts.
+
+At first I tried to get an overall fitness score by multiplying moment and population variance. Lower scores are better in both components and in the resulting product. It turned out that variance was easier to solve for and the system would get stuck in a local minima where any improvement in moment would result in a relatively nasty degradation in variance. I then tried increasing the importance of moment by exponentiating that term by 2, 3 or 4. With fitness equal to variance * moment^4, I got one trial run to settle down to a nice solution. On another run, I found that I wanted to be able to tune the balance dynamically as it ran. That would not be practical even if I implemented it.
+
+I settled on the solution of mapping each component onto the range (0,1] as appropriate for each population generation. So, find the most fit for moment, the least fit for moment, and scale all moments. Similarly for population variance. The final fitness for an individual is the addition of these scaled values. This method has been successfully running for days, neglecting neither component and moving both towards a better global solution.
+
+But, it's been running for days an the results are mediocre.
+
+Using just the zip code blocks, 1757 for California, or just 366 for New Mexico, the system rapidly settles on a "pretty good" solution. But this solution still has outlier blocks allocated to far away districts. Districts can even be more nastily intermingled, in the case of the Texas data which has been running for a day now.
+
+Ultimately, I think the problem with this method is its lack of concept of a "region". I'm really looking for a region based answer, but I have no concept of a region in the solver. I assumed that the "moment" component would implicitly result in regions, but it seems to not quite be a strong enough influence. I am still running the California full census block data set. At that level of detail this implicit region building may yet happen, but that data set has been running for over 240 hours on a 1.25 GHz G4 processor. I'll leave it running until I write a better, region based, solver.
+
+A couple little optimizations:
+Neglecting the curvature of the earth and using longitudes and latitudes as cartesian coordinates provided a great speed boost. Not taking the square root of distances also provided a great speed boost, and simply biased the system to get those distances down.
+
+2005-01-20 14:44:20 -0800
+
+A region based solver will be able to use the same population variance and moment measures of district-plan fitness, but the solutions will be automatically constrained to be 
+
+
+Census Data URLs:
+http://ftp2.census.gov/census_2000/datasets/Summary_File_1/
+For some state (2 letter abbrev, lower case) "${st}", you just need the ${st}geo_uf1.zip files from Summary File 1. That has the per-block population and lat-lon in it. Download these into subdir 'data/' and preprocess.
+data/
+	${st}geo.uf1	-- what comes inside ${st}geo_uf1.zip . I recommend discarding the .zip and using bzip2 on this after preprocessing.
+	${st}101.uf1	-- `grep 'uSF1  ..101' < ${st}geo.uf1 > ${st}101.uf1` Only the "summary level 101" lines contain block info we want.
+
+http://www2.census.gov/geo/tiger/tiger2005se/
+use the tiger/get.pl script to slurp a state worth of TIGER map data.
+tiger/
+	??/	-- a state's 2 letter abbrev, in upper case
+		zips/	-- where get.pl slurps to
+		zips/url	-- a file that just contains 'http://www2.census.gov/geo/tiger/tiger2004fe/??/' for some state '??', used by get.pl
+		raw/	-- unzip the zips into this dir. from inside zips, `unzip -d ../raw tgr\*.zip`
+
+Can't seem to find 109th congressional districts down to block level.
+http://www.census.gov/geo/www/cd109th/tables109.html
+http://ftp2.census.gov/census_2000/datasets/109_Congressional_Districts/109_CD_HundredPercent/California/cageo_h09.zip
+
+NEW TIGER FORMAT
+http://www.census.gov/geo/www/tiger/
+http://www.census.gov/geo/www/tiger/tgrshp2009/tgrshp2009.html
+http://www.census.gov/geo/www/tiger/tgrshp2009/TGRSHP09.pdf
+started in 2008 but the old format was still working with the census 2000 data, but I'll need to upgrade!
+
+http://www.esri.com/library/whitepapers/pdfs/shapefile.pdf
+
+new format, for new data:
+http://www2.census.gov/geo/tiger/TIGER2009/09_CONNECTICUT/tl_2009_09_tabblock.zip
+
+new format, for census2000 data:
+http://www2.census.gov/geo/tiger/TIGER2009/09_CONNECTICUT/tl_2009_09_tabblock00.zip
+
+http://www2.census.gov/geo/tiger/TIGER2009/25_MASSACHUSETTS/
+http://www2.census.gov/geo/tiger/TIGER2009/25_MASSACHUSETTS/tl_2009_25_tabblock.zip
+http://www2.census.gov/geo/tiger/TIGER2009/25_MASSACHUSETTS/tl_2009_25_tabblock00.zip
+http://www2.census.gov/geo/tiger/TIGER2009/25_MASSACHUSETTS/25017_Middlesex_County/tl_2009_25017_faces.zip
+
+I may be able to get better block-block links information from combining the TFID and reconstructed BlockID from the *_faces.zip topological faces file and the TFIDL,TFIDR from the *_edges.zip all lines file.
+
+*_tabblock00.dbf
+	state		two digit fips code
+	county		three digit code
+	tract		six digit
+	block		four digit
+	blockid		which appears to be the previous four concatenated, 15 digits
+	name		string(10)
+	mtfcc		maf/tiger feature class code
+	ur		urban/rural
+	uace		urban area code
+	funcstat	funcional status
+	aland		land area
+	awater		water area
+	intplat		interior point, lat,lon
+	intplon
+
+*_tabblock.dbf
+	statefp		two digit fips code
+	statens		8 char ansi code
+	countyfp	three digit code
+	statefp00	two digit fips code for 2000 census
+	countyfp00	three digit code for 2000 census
+	tractce00	six digit code for 2000 census
+	blockce00	four digit code for 2000 census
+	suffix1ce	one char suffix to all that
+	blkidfp		char[16] = statefp00+countyfp00+tractce00+blockce00+suffix1ce
+	name		char[11]
+	mtfcc		maf/tiger feature class code
+	ur		urban/rural
+	uace		urban area code
+	funcstat	funcional status
+	aland		land area
+	awater		water area
+	intplat		interior point, lat,lon
+	intplon
+
+And I get the sense from this that the specifics may change for the 2011 release.
+
+
+
+TO DO
+
+use unzip source in C++ utility for unpack/process? ftp://ftp.info-zip.org/pub/infozip/src/
+use Java std library unzip for unpack/process?
+
+Calculate voting-rights-act compliant good-gerrymandering majority-minority districts.
+
+make automatic download/run client (might just be python with a web/cgi thing on
+the server side) to do redistricting@home
+
+http://www.redistrictinggame.com/
+
+Micah Altman's Dissertation
+"Districting Principles and Democratic Representation"
+http://www.hmdc.harvard.edu/micah_altman/disab.shtml
+http://www.hmdc.harvard.edu/micah_altman/dispdf/dis_full.pdf
+
+
+http://scholar.google.com/scholar?q=redistricting+compactness&hl=en&lr=lang_en
+
+
+
+"Nonpartisan Political Redistricting by Computer", 1965. Hess, Weaver,
+Siegfeldt, Whelan
+http://links.jstor.org/sici?sici=0030-364X(196511%2F12)13%3A6%3C998%3ANPRBC%3E2.0.CO%3B2-2
+
+Gordon S. Harrison's review of the 2001 Alaska redistricting by 5 member commission
+http://www.law.duke.edu/shell/cite.pl?23+Alaska+L.+Rev.+51
+
+Alaska's brief history of redistricting is frought with lawsuits over every initially proposed map after the 1970, 1980 and 1990 Censuses.
+
+2010-03-08
+http://www.ombwatch.org/node/10815
+http://rosereport.org/20100308/new-movement-for-redistricting-reform-in-illinois/
+
+who are these people, what do they think?
+http://www.americansforredistrictingreform.org/index.html
+http://www.campaignlegalcenter.org/redistricting.html
+
+http://www.fairdistrictsflorida.org/home.php
+
+maybe the LWV has the contacts I want
+http://www.lwv.org//AM/Template.cfm?Section=Home
+
+http://www.brennancenter.org/content/resource/a_citizens_guide_to_redistricting/
+http://www.brennancenter.org/content/section/category/redistricting/
+
+Indiana Secretary of State Todd Rokita 
+http://www.in.gov/sos/
+http://www.rethinkingredistricting.com/
+
+
+
+clean, run inside data/??/:
+rm -f *.jpg *.png *.mppb *.pb *.links *.dsz drendcmd basicargs handargs makedefaults .make *.uf1 mrun?? measure geometry.pickle ??_start_stats .uf1
+
+TODO: fix Alaska, the map data has longitudes crossing -180 to +180. and if I get really crazy, do polar projections or something.
+
+TODO: overlay the "urban area" data onto my maps.
+http://www2.census.gov/geo/tiger/TIGER2009/tl_2009_us_uac00.zip
+
+TODO: link problem may be due to disjointness in ubids between geo-101 data
+and faces+edges
+
+TODO: project states into something like azimuthal equal distance projection centered over the state  http://trac.osgeo.org/proj/
+
+
+2011-02-10 Thursday 10:24 AM Boston
+I have a first results on 2011 data! It's just 1000 generations of the nearest neighbor solver, so I'm sure I'll do better soon. So far I've run it for NJ and VA. Had to toss the super-fine face+edges based linking and fall back to common-line-segment linking based on the tabblock tiger maps. The faces seem to have lots of 'blocks' that don't exist in the redistricting data. Probably extra detail on water and unpopulated areas.
+
+http://www.redistricting.wa.gov/
+
+
+TODO: try to keep precincts/cities/counties together by imposing a distance penalty on blocks that are part of a region that isn't entirely within the district.
+
+<b>Keep-Together regions</b> (city, county, other). If a region is not wholly within within one district, population in region counts as N miles more away from district centers. (KT region may not encompass more than one district worth of population, probably shouldn't encompass more than (WAG) 70% of a district population.)
+
+<b>Do-Not-Cross lines</b>. If the line from district center to population crosses this line, a N-mile penalty is added to that distance. Apply this to rivers, mountains, other natural or man made well recognized dividing lines. (If the penalty is not high enough there might wind up being just a few people on the far side of it, and that could be weird. Placement and high penalties could result in weird constrained solutions in other ways too.)
+
+http://www.legis.iowa.gov/Resources/Redist/redistricting.aspx
+http://www.house.mo.gov/largemap.aspx
+
+2012-05-28 14:38:05 EDT (Monday, May 28 02:38:05 PM)
+
+TODO: set G+ on the website
+https://plusone.google.com/_/+1/confirm?hl=en&url=${url} 
+
+2013-05-04 16:11:54 EDT (Saturday, May 04 04:11:54 PM)
+
+analyze and render 2013 actual districts
+
+./analyze -P ../../CT/ct.pb -d 5 --csv-solution --loadSolution 09_CT_CD113.txt
